@@ -1,0 +1,37 @@
+---
+- name: Полный деплой Flask + Redis + Nginx через Docker Compose
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: 1. Убедиться, что целевая папка существует
+      ansible.builtin.file:
+        path: /home/bunda/prod-app
+        state: directory
+        owner: bunda
+        group: bunda
+        mode: '0755'
+
+    - name: 2. Копировать файлы проекта с CachyOS на сервер
+      ansible.builtin.copy:
+        src: ./project-files/
+        dest: /home/bunda/prod-app/
+        owner: bunda
+        group: bunda
+        mode: '0644'
+
+    - name: 3. Опустить старые контейнеры (если они были)
+      community.docker.docker_compose_v2:
+        project_src: /home/bunda/prod-app
+        state: absent
+
+    - name: 4. Собрать и запустить проект в фоне
+      community.docker.docker_compose_v2:
+        project_src: /home/bunda/prod-app
+        state: present
+        build: always
+
+    - name: 5. Проверить, что Nginx на 80-м порту отвечает
+      ansible.builtin.uri:
+        url: http://localhost
+        status_code: 200
